@@ -1,25 +1,34 @@
--- Create a stored procedure 'ComputeAverageWeightedScoreForUser' to compute and store the average weighted score for a student
-CREATE PROCEDURE ComputeAverageWeightedScoreForUser(IN user_id INT)
+-- Create a stored procedure 'ComputeAverageWeightedScoreForUser'
+-- to compute and store the average weighted score for a student
+DROP PROCEDURE IF EXISTS ComputeAverageWeightedScoreForUser;
+DELIMITER $$
+CREATE PROCEDURE ComputeAverageWeightedScoreForUser (user_id INT)
 BEGIN
-    DECLARE total_score DECIMAL(10,2);
-    DECLARE total_weight DECIMAL(10,2);
-    DECLARE avg_weighted_score DECIMAL(10,2);
+    DECLARE total_weighted_score INT DEFAULT 0;
+    DECLARE total_weight INT DEFAULT 0;
 
-    -- Calculate total weighted score and total weight
-    SELECT SUM(score * weight) INTO total_score, SUM(weight) INTO total_weight
-    FROM grades
-    WHERE user_id = user_id;
+    SELECT SUM(corrections.score * projects.weight)
+        INTO total_weighted_score
+        FROM corrections
+            INNER JOIN projects
+                ON corrections.project_id = projects.id
+        WHERE corrections.user_id = user_id;
 
-    -- Calculate average weighted score
-    IF total_weight > 0 THEN
-        SET avg_weighted_score = total_score / total_weight;
+    SELECT SUM(projects.weight)
+        INTO total_weight
+        FROM corrections
+            INNER JOIN projects
+                ON corrections.project_id = projects.id
+        WHERE corrections.user_id = user_id;
+
+    IF total_weight = 0 THEN
+        UPDATE users
+            SET users.average_score = 0
+            WHERE users.id = user_id;
     ELSE
-        SET avg_weighted_score = 0;
+        UPDATE users
+            SET users.average_score = total_weighted_score / total_weight
+            WHERE users.id = user_id;
     END IF;
-
-    -- Insert or update the average weighted score for the user
-    INSERT INTO average_weighted_scores (user_id, avg_weighted_score)
-    VALUES (user_id, avg_weighted_score)
-    ON DUPLICATE KEY UPDATE avg_weighted_score = VALUES(avg_weighted_score);
-END;
-
+END $$
+DELIMITER ;
