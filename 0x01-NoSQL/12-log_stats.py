@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """trying out
 """
-
-
 from pymongo import MongoClient
+
 
 # MongoDB connection settings
 mongo_host = 'localhost'
