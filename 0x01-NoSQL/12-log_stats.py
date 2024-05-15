@@ -1,39 +1,59 @@
 #!/usr/bin/env python3
-"""
-Provide some stats about Nginx logs stored in MongoDB
-Database: logs, Collection: nginx, Display same as example
-first line: x logs, x number of documents in this collection
-second line: Methods
-5 lines with method = ["GET", "POST", "PUT", "PATCH", "DELETE"]
-one line with method=GET, path=/status
-"""
+'''try '''
 from pymongo import MongoClient
 
 
-METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"]
+# MongoDB connection settings
+mongo_host = 'localhost'
+mongo_port = 27017
+mongo_db = 'logs'
+mongo_collection = 'nginx'
 
+def connect_to_mongodb():
+    """Connect to MongoDB and return the client, database, and collection objects."""
+    client = MongoClient(mongo_host, mongo_port)
+    db = client[mongo_db]
+    collection = db[mongo_collection]
+    return client, db, collection
 
-def log_stats(mongo_collection, option=None):
-    """
-    Prototype: def log_stats(mongo_collection, option=None):
-    Provide some stats about Nginx logs stored in MongoDB
-    """
-    items = {}
-    if option:
-        value = mongo_collection.count_documents(
-            {"method": {"$regex": option}})
-        print(f"\tmethod {option}: {value}")
-        return
+def count_documents(collection):
+    """Count the total number of documents in a given collection."""
+    return collection.estimated_document_count()
 
-    result = mongo_collection.count_documents(items)
-    print(f"{result} logs")
-    print("Methods:")
-    for method in METHODS:
-        log_stats(nginx_collection, method)
-    status_check = mongo_collection.count_documents({"path": "/status"})
-    print(f"{status_check} status check")
+def count_method_documents(collection, method):
+    """Count the number of documents with a specific HTTP method in the collection."""
+    return collection.count_documents({"method": method})
 
+def count_status_check(collection):
+    """Count the number of documents with method=GET and path=/status."""
+    return collection.count_documents({"method": "GET", "path": "/status"})
+
+def run_statistics_scenario():
+    """Run the statistics scenario against the specified MongoDB setup."""
+    # Connect to MongoDB
+    client, db, collection = connect_to_mongodb()
+
+    try:
+        # Total number of documents in the collection
+        total_logs = count_documents(collection)
+        print(f"{total_logs} logs")
+
+        # Count documents for each HTTP method
+        methods = ["GET", "POST", "PUT", "PATCH", "DELETE"]
+        method_counts = {method: count_method_documents(collection, method) for method in methods}
+
+        # Print the "Methods:" line
+        print("Methods:")
+        for method in methods:
+            print(f"    method {method}: {method_counts[method]}")
+
+        # Count documents with specific method and path
+        status_check_count = count_status_check(collection)
+        print(f"{status_check_count} status check")
+
+    finally:
+        # Close MongoDB connection
+        client.close()
 
 if __name__ == "__main__":
-    nginx_collection = MongoClient('mongodb://127.0.0.1:27017').logs.nginx
-    log_stats(nginx_collection)
+    run_statistics_scenario()
